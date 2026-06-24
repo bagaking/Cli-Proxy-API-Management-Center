@@ -948,37 +948,16 @@ const renderCodexItems = (
     );
   });
 
-  if (accountNodes.length > 0 || refreshQuotaAction || resetNodes.length > 0 || resetQuotaAction) {
-    const surfaceNodes: ReactNode[] = [];
-
-    if (accountNodes.length > 0 || refreshQuotaAction) {
-      surfaceNodes.push(
-        h(
-          'div',
-          { key: 'account-surface', className: styleMap.codexInfoBar },
-          h('div', { className: styleMap.codexSurfaceContent }, ...accountNodes),
-          refreshQuotaAction
-            ? h('div', { className: styleMap.codexSurfaceActions }, refreshQuotaAction)
-            : null
-        )
-      );
-    }
-
-    if (resetNodes.length > 0 || resetQuotaAction) {
-      surfaceNodes.push(
-        h(
-          'div',
-          { key: 'reset-surface', className: styleMap.codexResetBar },
-          h('div', { className: styleMap.codexSurfaceContent }, ...resetNodes),
-          resetQuotaAction
-            ? h('div', { className: styleMap.codexSurfaceActions }, resetQuotaAction)
-            : null
-        )
-      );
-    }
-
+  if (accountNodes.length > 0 || refreshQuotaAction) {
     nodes.push(
-      h('div', { key: 'codex-surfaces', className: styleMap.codexSurfaceStack }, ...surfaceNodes)
+      h(
+        'div',
+        { key: 'account-surface', className: styleMap.codexInfoBar },
+        h('div', { className: styleMap.codexSurfaceContent }, ...accountNodes),
+        refreshQuotaAction
+          ? h('div', { className: styleMap.codexSurfaceActions }, refreshQuotaAction)
+          : null
+      )
     );
   }
 
@@ -986,41 +965,54 @@ const renderCodexItems = (
     nodes.push(
       h('div', { key: 'empty', className: styleMap.quotaMessage }, t('codex_quota.empty_windows'))
     );
-    return h(Fragment, null, ...nodes);
-  }
+  } else {
+    nodes.push(
+      ...windows.map((window) => {
+        const used = window.usedPercent;
+        const clampedUsed = used === null ? null : Math.max(0, Math.min(100, used));
+        const remaining =
+          clampedUsed === null ? null : Math.max(0, Math.min(100, 100 - clampedUsed));
+        const percentLabel = remaining === null ? '--' : `${Math.round(remaining)}%`;
+        const windowLabel = window.labelKey
+          ? t(window.labelKey, window.labelParams as Record<string, string | number>)
+          : window.label;
 
-  nodes.push(
-    ...windows.map((window) => {
-      const used = window.usedPercent;
-      const clampedUsed = used === null ? null : Math.max(0, Math.min(100, used));
-      const remaining = clampedUsed === null ? null : Math.max(0, Math.min(100, 100 - clampedUsed));
-      const percentLabel = remaining === null ? '--' : `${Math.round(remaining)}%`;
-      const windowLabel = window.labelKey
-        ? t(window.labelKey, window.labelParams as Record<string, string | number>)
-        : window.label;
-
-      return h(
-        'div',
-        { key: window.id, className: styleMap.quotaRow },
-        h(
+        return h(
           'div',
-          { className: styleMap.quotaRowHeader },
-          h('span', { className: styleMap.quotaModel }, windowLabel),
+          { key: window.id, className: styleMap.quotaRow },
           h(
             'div',
-            { className: styleMap.quotaMeta },
-            h('span', { className: styleMap.quotaPercent }, percentLabel),
-            h('span', { className: styleMap.quotaReset }, window.resetLabel)
-          )
-        ),
-        h(QuotaProgressBar, {
-          percent: remaining,
-          highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
-          mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
-        })
-      );
-    })
-  );
+            { className: styleMap.quotaRowHeader },
+            h('span', { className: styleMap.quotaModel }, windowLabel),
+            h(
+              'div',
+              { className: styleMap.quotaMeta },
+              h('span', { className: styleMap.quotaPercent }, percentLabel),
+              h('span', { className: styleMap.quotaReset }, window.resetLabel)
+            )
+          ),
+          h(QuotaProgressBar, {
+            percent: remaining,
+            highThreshold: QUOTA_PROGRESS_HIGH_THRESHOLD,
+            mediumThreshold: QUOTA_PROGRESS_MEDIUM_THRESHOLD,
+          })
+        );
+      })
+    );
+  }
+
+  if (resetNodes.length > 0 || resetQuotaAction) {
+    nodes.push(
+      h(
+        'div',
+        { key: 'reset-surface', className: styleMap.codexResetBar },
+        h('div', { className: styleMap.codexSurfaceContent }, ...resetNodes),
+        resetQuotaAction
+          ? h('div', { className: styleMap.codexSurfaceActions }, resetQuotaAction)
+          : null
+      )
+    );
+  }
 
   return h(Fragment, null, ...nodes);
 };

@@ -635,25 +635,27 @@
 .quotaResetCreditButton:global(.btn.btn-sm),
 .quotaRefreshButton:global(.btn.btn-sm) {
   border-radius: 999px;
-  padding-inline: 12px;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
 
   > span {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     white-space: nowrap;
   }
 }
 
 .quotaResetCreditButtonWarning:global(.btn.btn-sm) {
-  background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 13%, var(--bg-primary));
-  border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 44%, var(--border-color));
+  background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 7%, var(--bg-primary));
+  border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 34%, var(--border-color));
   color: color-mix(in srgb, var(--warning-text) 84%, var(--text-primary));
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.26) inset;
+  box-shadow: none;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 18%, var(--bg-primary));
-    border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 58%, var(--border-color));
+    background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 11%, var(--bg-primary));
+    border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 46%, var(--border-color));
     color: var(--warning-text);
   }
 }
@@ -729,7 +731,7 @@
 .codexSurfaceStack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .codexInfoBar,
@@ -737,32 +739,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: $spacing-sm;
+  gap: 8px;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--border-color) 76%, transparent);
-  border-radius: $radius-md;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.34) inset,
-    0 8px 18px -18px rgba(15, 23, 42, 0.36);
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 64%, transparent);
+  border-radius: $radius-sm;
+  box-shadow: none;
 }
 
 .codexInfoBar {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--primary-color) 8%, var(--bg-secondary)),
-    color-mix(in srgb, var(--bg-primary) 88%, transparent)
-  );
-  border-color: color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
+  background: color-mix(in srgb, var(--bg-secondary) 58%, transparent);
+  border-color: color-mix(in srgb, var(--border-color) 64%, transparent);
+}
+
+.codexInfoBar .premiumPlanValue {
+  padding: 1px 7px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.18) inset,
+    0 1px 2px rgba(133, 92, 0, 0.12);
+}
+
+.codexInfoBar .premiumPlanValue::before {
+  content: none;
 }
 
 .codexResetBar {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--quota-medium-color, #e0aa14) 13%, var(--bg-secondary)),
-    color-mix(in srgb, var(--bg-primary) 88%, transparent)
-  );
-  border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 32%, var(--border-color));
+  margin-top: 2px;
+  background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 5%, transparent);
+  border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 24%, var(--border-color));
 }
 
 .codexSurfaceContent {
@@ -770,8 +774,9 @@
   align-items: center;
   flex: 1 1 auto;
   flex-wrap: wrap;
-  gap: 7px 14px;
+  gap: 4px 10px;
   min-width: 0;
+  line-height: 20px;
 }
 
 .codexSurfaceActions {
@@ -785,19 +790,17 @@
 
 :global([data-theme='dark']) .codexInfoBar,
 :global([data-theme='dark']) .codexResetBar {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.05) inset,
-    0 10px 22px -20px rgba(0, 0, 0, 0.8);
+  box-shadow: none;
 }
 
 :global([data-theme='dark']) .quotaResetCreditButtonWarning:global(.btn.btn-sm) {
-  background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 18%, var(--bg-primary));
-  border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 11%, var(--bg-primary));
+  border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 34%, var(--border-color));
   color: #facc15;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 24%, var(--bg-primary));
-    border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 58%, var(--border-color));
+    background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 15%, var(--bg-primary));
+    border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 46%, var(--border-color));
   }
 }
 
