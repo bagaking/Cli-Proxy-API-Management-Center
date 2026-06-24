@@ -748,8 +748,33 @@
 }
 
 .codexInfoBar {
-  background: color-mix(in srgb, var(--bg-secondary) 58%, transparent);
-  border-color: color-mix(in srgb, var(--border-color) 64%, transparent);
+  min-height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.codexInfoBar .codexSurfaceContent {
+  flex-wrap: nowrap;
+  gap: 4px 12px;
+  overflow: hidden;
+}
+
+.codexInfoBar .codexPlanItem {
+  flex-wrap: nowrap;
+}
+
+.codexInfoBar .codexPlanLabel {
+  font-size: 12px;
+}
+
+.codexInfoBar .codexPlanValue {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.codexInfoBar .codexSurfaceActions {
+  margin-left: 4px;
 }
 
 .codexInfoBar .premiumPlanValue {
@@ -767,6 +792,32 @@
   margin-top: 2px;
   background: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 5%, transparent);
   border-color: color-mix(in srgb, var(--quota-medium-color, #e0aa14) 24%, var(--border-color));
+}
+
+.codexResetBar .codexSurfaceContent {
+  gap: 2px 8px;
+  line-height: 18px;
+}
+
+.codexResetBar .codexPlanItem {
+  gap: 4px;
+}
+
+.codexResetBar .codexPlanLabel,
+.codexResetBar .codexPlanValue,
+.codexResetBar .codexResetExpiryValue {
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.codexResetBar .codexPlanValue,
+.codexResetBar .codexResetExpiryValue {
+  font-weight: 600;
+}
+
+.codexResetBar .quotaResetCreditButton:global(.btn.btn-sm) {
+  min-height: 28px;
+  padding: 0 9px;
 }
 
 .codexSurfaceContent {
@@ -805,6 +856,16 @@
 }
 
 @include mobile {
+  .codexInfoBar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  .codexInfoBar .codexSurfaceContent {
+    flex-wrap: wrap;
+  }
+
   .codexInfoBar,
   .codexResetBar {
     align-items: stretch;
