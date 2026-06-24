@@ -4,7 +4,7 @@
 
 import type { TypeColorSet } from '@/types';
 
-// Theme colors for type badges — 与 authFiles/constants.ts 保持同步
+// Theme colors for type badges. Keep in sync with authFiles/constants.ts.
 export const TYPE_COLORS: Record<string, TypeColorSet> = {
   qwen: {
     light: { bg: '#ede5fd', text: '#5530c7' },
@@ -99,6 +99,8 @@ export const CLAUDE_USAGE_WINDOW_KEYS = [
 
 // Codex API configuration
 export const CODEX_USAGE_URL = 'https://chatgpt.com/backend-api/wham/usage';
+export const CODEX_RATE_LIMIT_RESET_CREDITS_URL =
+  'https://chatgpt.com/backend-api/wham/rate-limit-reset-credits';
 export const CODEX_RATE_LIMIT_RESET_CREDITS_CONSUME_URL =
   'https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume';
 
