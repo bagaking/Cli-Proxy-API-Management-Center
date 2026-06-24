@@ -55,6 +55,8 @@ export function QuotaProgressBar({
 export interface QuotaRenderHelpers {
   styles: typeof styles;
   QuotaProgressBar: (props: QuotaProgressBarProps) => ReactElement;
+  refreshQuotaAction?: ReactNode;
+  resetQuotaAction?: ReactNode;
 }
 
 const parseIntegerField = (value: unknown, fallback: number): number => {
@@ -78,6 +80,7 @@ interface QuotaCardProps<TState extends QuotaStatusState> {
   defaultType: string;
   canRefresh?: boolean;
   onRefresh?: () => void;
+  actionsPlacement?: 'footer' | 'inline';
   resetQuotaAction?: ReactNode;
   renderQuotaItems: (quota: TState, t: TFunction, helpers: QuotaRenderHelpers) => ReactNode;
 }
@@ -92,6 +95,7 @@ export function QuotaCard<TState extends QuotaStatusState>({
   defaultType,
   canRefresh = false,
   onRefresh,
+  actionsPlacement = 'footer',
   resetQuotaAction,
   renderQuotaItems,
 }: QuotaCardProps<TState>) {
@@ -118,6 +122,23 @@ export function QuotaCard<TState extends QuotaStatusState>({
   const idleMessageKey = onRefresh
     ? `${i18nPrefix}.idle`
     : (cardIdleMessageKey ?? `${i18nPrefix}.idle`);
+  const refreshQuotaAction =
+    onRefresh && quotaStatus !== 'idle' ? (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className={styles.quotaRefreshButton}
+        onClick={onRefresh}
+        disabled={!canRefresh || quotaLoading}
+        loading={quotaLoading}
+        title={t('auth_files.quota_refresh_hint')}
+      >
+        {!quotaLoading && <IconRefreshCw size={14} />}
+        {t('auth_files.quota_refresh_single')}
+      </Button>
+    ) : undefined;
+  const useInlineActions = actionsPlacement === 'inline' && quotaStatus === 'success';
 
   const getTypeLabel = (type: string): string => {
     const key = `auth_files.filter_${type}`;
@@ -174,30 +195,21 @@ export function QuotaCard<TState extends QuotaStatusState>({
             })}
           </div>
         ) : quota ? (
-          renderQuotaItems(quota, t, { styles, QuotaProgressBar })
+          renderQuotaItems(quota, t, {
+            styles,
+            QuotaProgressBar,
+            refreshQuotaAction,
+            resetQuotaAction,
+          })
         ) : (
           <div className={styles.quotaMessage}>{t(idleMessageKey)}</div>
         )}
       </div>
 
-      {(resetQuotaAction || (onRefresh && quotaStatus !== 'idle')) && (
+      {!useInlineActions && (resetQuotaAction || refreshQuotaAction) && (
         <div className={styles.quotaCardActions}>
           {resetQuotaAction}
-          {onRefresh && quotaStatus !== 'idle' && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className={styles.quotaRefreshButton}
-              onClick={onRefresh}
-              disabled={!canRefresh || quotaLoading}
-              loading={quotaLoading}
-              title={t('auth_files.quota_refresh_hint')}
-            >
-              {!quotaLoading && <IconRefreshCw size={14} />}
-              {t('auth_files.quota_refresh_single')}
-            </Button>
-          )}
+          {refreshQuotaAction}
         </div>
       )}
     </div>

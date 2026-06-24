@@ -18,6 +18,7 @@ import type {
   ClaudeUsagePayload,
   CodexRateLimitInfo,
   CodexQuotaState,
+  CodexResetCreditExpiry,
   CodexUsageWindow,
   CodexQuotaWindow,
   CodexUsagePayload,
@@ -41,6 +42,7 @@ import {
   CLAUDE_USAGE_URL,
   CLAUDE_REQUEST_HEADERS,
   CLAUDE_USAGE_WINDOW_KEYS,
+  CODEX_RATE_LIMIT_RESET_CREDITS_URL,
   CODEX_RATE_LIMIT_RESET_CREDITS_CONSUME_URL,
   CODEX_USAGE_URL,
   CODEX_REQUEST_HEADERS,
@@ -53,6 +55,8 @@ import {
   normalizeStringValue,
   parseAntigravityPayload,
   parseClaudeUsagePayload,
+  parseCodexResetCreditExpiries,
+  parseCodexResetCreditsPayload,
   parseCodexUsagePayload,
   parseKimiUsagePayload,
   parseXaiBillingPayload,
@@ -86,6 +90,14 @@ type AntigravityQuotaData = {
   groups: AntigravityQuotaGroup[];
   subscription: AntigravityQuotaSubscription | null;
   serverTimeOffsetMs: number | null;
+};
+
+type CodexQuotaData = {
+  planType: string | null;
+  subscriptionActiveUntil: string | number | null;
+  rateLimitResetCreditsAvailableCount: number | null;
+  rateLimitResetCreditExpiries: CodexResetCreditExpiry[];
+  windows: CodexQuotaWindow[];
 };
 
 const QUOTA_PROGRESS_HIGH_THRESHOLD = 70;
@@ -122,6 +134,7 @@ export interface QuotaConfig<TState, TData> {
   controlsClassName: string;
   controlClassName: string;
   gridClassName: string;
+  actionsPlacement?: 'footer' | 'inline';
   renderQuotaItems: (quota: TState, t: TFunction, helpers: QuotaRenderHelpers) => ReactNode;
 }
 
@@ -502,15 +515,7 @@ const buildCodexQuotaWindows = (payload: CodexUsagePayload, t: TFunction): Codex
   return windows;
 };
 
-const fetchCodexQuota = async (
-  file: AuthFileItem,
-  t: TFunction
-): Promise<{
-  planType: string | null;
-  subscriptionActiveUntil: string | number | null;
-  rateLimitResetCreditsAvailableCount: number | null;
-  windows: CodexQuotaWindow[];
-}> => {
+const fetchCodexQuota = async (file: AuthFileItem, t: TFunction): Promise<CodexQuotaData> => {
   const rawAuthIndex = file['auth_index'] ?? file.authIndex;
   const authIndex = normalizeAuthIndex(rawAuthIndex);
   if (!authIndex) {
@@ -551,12 +556,57 @@ const fetchCodexQuota = async (
   );
   const planType = planTypeFromUsage ?? planTypeFromFile;
   const windows = buildCodexQuotaWindows(payload, t);
+  const availableExpiryCount =
+    rateLimitResetCreditsAvailableCount === null
+      ? null
+      : Math.max(0, Math.floor(rateLimitResetCreditsAvailableCount));
+  const resetCreditExpiries =
+    availableExpiryCount === 0
+      ? []
+      : await fetchCodexResetCreditExpiries(authIndex, requestHeader, accountId);
+  const rateLimitResetCreditExpiries =
+    availableExpiryCount === null
+      ? resetCreditExpiries
+      : resetCreditExpiries.slice(0, availableExpiryCount);
+
   return {
     planType,
     subscriptionActiveUntil,
     rateLimitResetCreditsAvailableCount,
+    rateLimitResetCreditExpiries,
     windows,
   };
+};
+
+const fetchCodexResetCreditExpiries = async (
+  authIndex: string,
+  baseHeader: Record<string, string>,
+  accountId: string | null
+): Promise<CodexResetCreditExpiry[]> => {
+  const requestHeader: Record<string, string> = {
+    ...baseHeader,
+  };
+  if (accountId) {
+    requestHeader['OpenAI-Account'] = accountId;
+  }
+
+  try {
+    const result = await apiCallApi.request({
+      authIndex,
+      method: 'GET',
+      url: CODEX_RATE_LIMIT_RESET_CREDITS_URL,
+      header: requestHeader,
+    });
+
+    if (result.statusCode < 200 || result.statusCode >= 300) {
+      return [];
+    }
+
+    const payload = parseCodexResetCreditsPayload(result.body ?? result.bodyText);
+    return parseCodexResetCreditExpiries(payload);
+  } catch {
+    return [];
+  }
 };
 
 const createCodexRedeemRequestId = (): string => {
@@ -604,15 +654,7 @@ const consumeCodexRateLimitResetCredit = async (
   }
 };
 
-const resetCodexQuota = async (
-  file: AuthFileItem,
-  t: TFunction
-): Promise<{
-  planType: string | null;
-  subscriptionActiveUntil: string | number | null;
-  rateLimitResetCreditsAvailableCount: number | null;
-  windows: CodexQuotaWindow[];
-}> => {
+const resetCodexQuota = async (file: AuthFileItem, t: TFunction): Promise<CodexQuotaData> => {
   await consumeCodexRateLimitResetCredit(file, t);
   return fetchCodexQuota(file, t);
 };
@@ -831,12 +873,13 @@ const renderCodexItems = (
   t: TFunction,
   helpers: QuotaRenderHelpers
 ): ReactNode => {
-  const { styles: styleMap, QuotaProgressBar } = helpers;
+  const { styles: styleMap, QuotaProgressBar, refreshQuotaAction, resetQuotaAction } = helpers;
   const { createElement: h, Fragment } = React;
   const windows = quota.windows ?? [];
   const planType = quota.planType ?? null;
   const subscriptionActiveUntil = quota.subscriptionActiveUntil ?? null;
   const rateLimitResetCreditsAvailableCount = quota.rateLimitResetCreditsAvailableCount ?? null;
+  const rateLimitResetCreditExpiries = quota.rateLimitResetCreditExpiries ?? [];
 
   const getPlanLabel = (pt?: string | null): string | null => {
     const normalized = normalizePlanType(pt);
@@ -855,44 +898,88 @@ const renderCodexItems = (
   const isPremiumPlan = PREMIUM_CODEX_PLAN_TYPES.has(normalizePlanType(planType) ?? '');
   const expiryLabel = subscriptionActiveUntil ? formatDateTimeValue(subscriptionActiveUntil) : '';
   const nodes: ReactNode[] = [];
+  const planValueClass = isPremiumPlan ? styleMap.premiumPlanValue : styleMap.codexPlanValue;
 
-  if (planLabel || expiryLabel || rateLimitResetCreditsAvailableCount !== null) {
-    const planValueClass = isPremiumPlan ? styleMap.premiumPlanValue : styleMap.codexPlanValue;
-    const planNodes: ReactNode[] = [];
+  const renderSurfaceItem = (
+    key: string,
+    label: string,
+    value: string,
+    valueClassName = styleMap.codexPlanValue
+  ): ReactNode =>
+    h(
+      'span',
+      { key, className: styleMap.codexPlanItem },
+      h('span', { className: styleMap.codexPlanLabel }, label),
+      h('span', { className: valueClassName }, value)
+    );
 
-    const appendPlanItem = (
-      key: string,
-      label: string,
-      value: string,
-      valueClassName = styleMap.codexPlanValue
-    ) => {
-      planNodes.push(
-        h(
-          'span',
-          { key, className: styleMap.codexPlanItem },
-          h('span', { className: styleMap.codexPlanLabel }, label),
-          h('span', { className: valueClassName }, value)
-        )
-      );
-    };
+  const accountNodes: ReactNode[] = [];
+  if (planLabel) {
+    accountNodes.push(
+      renderSurfaceItem('plan-type', t('codex_quota.plan_label'), planLabel, planValueClass)
+    );
+  }
+  if (expiryLabel) {
+    accountNodes.push(
+      renderSurfaceItem('subscription-expiry', t('codex_quota.expires_label'), expiryLabel)
+    );
+  }
 
-    if (planLabel) {
-      appendPlanItem('plan-type', t('codex_quota.plan_label'), planLabel, planValueClass);
-    }
-
-    if (expiryLabel) {
-      appendPlanItem('subscription-expiry', t('codex_quota.expires_label'), expiryLabel);
-    }
-
-    if (rateLimitResetCreditsAvailableCount !== null) {
-      appendPlanItem(
+  const resetNodes: ReactNode[] = [];
+  if (rateLimitResetCreditsAvailableCount !== null) {
+    resetNodes.push(
+      renderSurfaceItem(
         'reset-credits',
         t('codex_quota.reset_credits_label'),
         rateLimitResetCreditsAvailableCount.toString()
+      )
+    );
+  }
+  rateLimitResetCreditExpiries.forEach((expiry, index) => {
+    const resetCreditExpiryLabel = formatDateTimeValue(expiry.expiresAtMs);
+    if (!resetCreditExpiryLabel) return;
+    resetNodes.push(
+      renderSurfaceItem(
+        `reset-credit-expiry-${index}`,
+        t('codex_quota.reset_credit_expiry_label', { index: index + 1 }),
+        resetCreditExpiryLabel,
+        styleMap.codexResetExpiryValue
+      )
+    );
+  });
+
+  if (accountNodes.length > 0 || refreshQuotaAction || resetNodes.length > 0 || resetQuotaAction) {
+    const surfaceNodes: ReactNode[] = [];
+
+    if (accountNodes.length > 0 || refreshQuotaAction) {
+      surfaceNodes.push(
+        h(
+          'div',
+          { key: 'account-surface', className: styleMap.codexInfoBar },
+          h('div', { className: styleMap.codexSurfaceContent }, ...accountNodes),
+          refreshQuotaAction
+            ? h('div', { className: styleMap.codexSurfaceActions }, refreshQuotaAction)
+            : null
+        )
       );
     }
 
-    nodes.push(h('div', { key: 'plan', className: styleMap.codexPlan }, ...planNodes));
+    if (resetNodes.length > 0 || resetQuotaAction) {
+      surfaceNodes.push(
+        h(
+          'div',
+          { key: 'reset-surface', className: styleMap.codexResetBar },
+          h('div', { className: styleMap.codexSurfaceContent }, ...resetNodes),
+          resetQuotaAction
+            ? h('div', { className: styleMap.codexSurfaceActions }, resetQuotaAction)
+            : null
+        )
+      );
+    }
+
+    nodes.push(
+      h('div', { key: 'codex-surfaces', className: styleMap.codexSurfaceStack }, ...surfaceNodes)
+    );
   }
 
   if (windows.length === 0) {
@@ -1215,15 +1302,7 @@ export const ANTIGRAVITY_CONFIG: QuotaConfig<AntigravityQuotaState, AntigravityQ
   renderQuotaItems: renderAntigravityItems,
 };
 
-export const CODEX_CONFIG: QuotaConfig<
-  CodexQuotaState,
-  {
-    planType: string | null;
-    subscriptionActiveUntil: string | number | null;
-    rateLimitResetCreditsAvailableCount: number | null;
-    windows: CodexQuotaWindow[];
-  }
-> = {
+export const CODEX_CONFIG: QuotaConfig<CodexQuotaState, CodexQuotaData> = {
   type: 'codex',
   i18nPrefix: 'codex_quota',
   cardIdleMessageKey: 'quota_management.card_idle_hint',
@@ -1233,17 +1312,19 @@ export const CODEX_CONFIG: QuotaConfig<
   canResetQuota: (quota) => (quota.rateLimitResetCreditsAvailableCount ?? 0) > 0,
   storeSelector: (state) => state.codexQuota,
   storeSetter: 'setCodexQuota',
-  buildLoadingState: () => ({ status: 'loading', windows: [] }),
+  buildLoadingState: () => ({ status: 'loading', windows: [], rateLimitResetCreditExpiries: [] }),
   buildSuccessState: (data) => ({
     status: 'success',
     windows: data.windows,
     planType: data.planType,
     subscriptionActiveUntil: data.subscriptionActiveUntil,
     rateLimitResetCreditsAvailableCount: data.rateLimitResetCreditsAvailableCount,
+    rateLimitResetCreditExpiries: data.rateLimitResetCreditExpiries,
   }),
   buildErrorState: (message, status) => ({
     status: 'error',
     windows: [],
+    rateLimitResetCreditExpiries: [],
     error: message,
     errorStatus: status,
   }),
@@ -1251,6 +1332,7 @@ export const CODEX_CONFIG: QuotaConfig<
   controlsClassName: styles.codexControls,
   controlClassName: styles.codexControl,
   gridClassName: styles.codexGrid,
+  actionsPlacement: 'inline',
   renderQuotaItems: renderCodexItems,
 };
 

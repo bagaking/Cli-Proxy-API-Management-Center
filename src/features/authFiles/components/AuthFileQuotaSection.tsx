@@ -125,7 +125,7 @@ export function AuthFileQuotaSection(props: AuthFileQuotaSectionProps) {
       title: t('codex_quota.reset_confirm_title'),
       message: t('codex_quota.reset_confirm_message', { name: file.name }),
       confirmText: t('codex_quota.reset_confirm_button'),
-      variant: 'primary',
+      variant: 'danger',
       onConfirm: async () => {
         setResettingQuota(true);
         try {
@@ -159,29 +159,49 @@ export function AuthFileQuotaSection(props: AuthFileQuotaSectionProps) {
     i18nPrefix: string;
     resetQuota?: (file: AuthFileItem, t: TFunction) => Promise<unknown>;
     canResetQuota?: (quota: unknown) => boolean;
+    actionsPlacement?: 'footer' | 'inline';
     renderQuotaItems: (quota: unknown, t: TFunction, helpers: unknown) => unknown;
   };
 
   const quotaStatus = quota?.status ?? 'idle';
   const canRefreshQuota = !disableControls && !file.disabled && !resettingQuota;
   const canUseResetQuota = canRefreshQuota && quotaStatus !== 'loading';
+  const useInlineActions = config.actionsPlacement === 'inline' && quotaStatus === 'success';
   const showResetQuotaAction = quota !== undefined && Boolean(config.canResetQuota?.(quota));
-  const resetQuotaAction = config.resetQuota && showResetQuotaAction ? (
-    <Button
-      type="button"
-      variant="secondary"
-      size="sm"
-      className={styles.quotaResetCreditButton}
-      onClick={() => resetQuotaForFile()}
-      disabled={!canUseResetQuota}
-      loading={resettingQuota}
-      title={t('codex_quota.reset_button')}
-      aria-label={t('codex_quota.reset_button')}
-    >
-      {!resettingQuota && <IconRefreshCw size={14} />}
-      {t('codex_quota.reset_button')}
-    </Button>
-  ) : undefined;
+  const resetQuotaAction =
+    config.resetQuota && showResetQuotaAction ? (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className={`${styles.quotaResetCreditButton} ${styles.quotaResetCreditButtonWarning}`}
+        onClick={() => resetQuotaForFile()}
+        disabled={!canUseResetQuota}
+        loading={resettingQuota}
+        title={t('codex_quota.reset_button')}
+        aria-label={t('codex_quota.reset_button')}
+      >
+        {!resettingQuota && <IconRefreshCw size={14} />}
+        {t('codex_quota.reset_button')}
+      </Button>
+    ) : undefined;
+  const refreshQuotaAction =
+    quotaStatus !== 'idle' ? (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className={styles.quotaRefreshButton}
+        onClick={() => void refreshQuotaForFile()}
+        disabled={!canRefreshQuota || quotaStatus === 'loading'}
+        loading={quotaStatus === 'loading'}
+        title={t('auth_files.quota_refresh_hint')}
+        aria-label={t('auth_files.quota_refresh_single')}
+      >
+        {quotaStatus !== 'loading' && <IconRefreshCw size={14} />}
+        {t('auth_files.quota_refresh_single')}
+      </Button>
+    ) : undefined;
   const quotaErrorMessage = resolveQuotaErrorMessage(
     t,
     quota?.errorStatus,
@@ -211,11 +231,13 @@ export function AuthFileQuotaSection(props: AuthFileQuotaSectionProps) {
         (config.renderQuotaItems(quota, t, {
           styles,
           QuotaProgressBar,
+          refreshQuotaAction,
+          resetQuotaAction,
         }) as ReactNode)
       ) : (
         <div className={styles.quotaMessage}>{t(`${config.i18nPrefix}.idle`)}</div>
       )}
-      {quotaStatus !== 'idle' && resetQuotaAction && (
+      {!useInlineActions && quotaStatus !== 'idle' && resetQuotaAction && (
         <div className={styles.quotaCardActions}>{resetQuotaAction}</div>
       )}
     </div>
