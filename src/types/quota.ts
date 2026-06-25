@@ -85,6 +85,13 @@ export interface CodexResetCreditExpiry {
   expiresAtMs: number;
 }
 
+export interface CodexRateLimitResetCredit {
+  id: string;
+  status: string;
+  grantedAt: string;
+  expiresAt: string;
+}
+
 export interface CodexUsagePayload {
   plan_type?: string;
   planType?: string;
@@ -208,7 +215,8 @@ export interface CodexQuotaState {
   planType?: string | null;
   subscriptionActiveUntil?: string | number | null;
   rateLimitResetCreditsAvailableCount?: number | null;
-  rateLimitResetCreditExpiries?: CodexResetCreditExpiry[];
+  rateLimitResetCredits?: CodexRateLimitResetCredit[];
+  rateLimitResetCreditsError?: string;
   error?: string;
   errorStatus?: number;
 }
