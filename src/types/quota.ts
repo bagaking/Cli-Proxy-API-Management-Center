@@ -67,24 +67,6 @@ export interface CodexRateLimitResetCredits {
   availableCount?: number | string;
 }
 
-export interface CodexResetCreditItemPayload {
-  expires_at?: string | number | null;
-  expiresAt?: string | number | null;
-  expiration_time?: string | number | null;
-  expirationTime?: string | number | null;
-}
-
-export interface CodexResetCreditsPayload {
-  reset_credits?: CodexResetCreditItemPayload[] | null;
-  resetCredits?: CodexResetCreditItemPayload[] | null;
-  credits?: CodexResetCreditItemPayload[] | null;
-  items?: CodexResetCreditItemPayload[] | null;
-}
-
-export interface CodexResetCreditExpiry {
-  expiresAtMs: number;
-}
-
 export interface CodexRateLimitResetCredit {
   id: string;
   status: string;

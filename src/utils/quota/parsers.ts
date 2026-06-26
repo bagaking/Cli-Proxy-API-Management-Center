@@ -4,9 +4,6 @@
 
 import type {
   ClaudeUsagePayload,
-  CodexResetCreditExpiry,
-  CodexResetCreditItemPayload,
-  CodexResetCreditsPayload,
   CodexUsagePayload,
   KimiUsagePayload,
   XaiBillingPayload,
@@ -172,42 +169,6 @@ export function parseCodexUsagePayload(payload: unknown): CodexUsagePayload | nu
   return null;
 }
 
-export function parseCodexResetCreditsPayload(
-  payload: unknown
-): CodexResetCreditsPayload | null {
-  if (payload === undefined || payload === null) return null;
-  if (typeof payload === 'string') {
-    const trimmed = payload.trim();
-    if (!trimmed) return null;
-    try {
-      return JSON.parse(trimmed) as CodexResetCreditsPayload;
-    } catch {
-      return null;
-    }
-  }
-  if (typeof payload === 'object' && !Array.isArray(payload)) {
-    return payload as CodexResetCreditsPayload;
-  }
-  return null;
-}
-
-export function parseCodexResetCreditExpiries(
-  payload: CodexResetCreditsPayload | null
-): CodexResetCreditExpiry[] {
-  if (!payload) return [];
-
-  const credits = getCodexResetCreditItems(payload);
-  return credits
-    .map((credit) =>
-      parseCodexResetCreditExpiryMs(
-        credit.expires_at ?? credit.expiresAt ?? credit.expiration_time ?? credit.expirationTime
-      )
-    )
-    .filter((expiresAtMs): expiresAtMs is number => expiresAtMs !== null)
-    .sort((left, right) => left - right)
-    .map((expiresAtMs) => ({ expiresAtMs }));
-}
-
 export function parseKimiUsagePayload(payload: unknown): KimiUsagePayload | null {
   if (payload === undefined || payload === null) return null;
   if (typeof payload === 'string') {
@@ -223,51 +184,6 @@ export function parseKimiUsagePayload(payload: unknown): KimiUsagePayload | null
     return payload as KimiUsagePayload;
   }
   return null;
-}
-
-function getCodexResetCreditItems(
-  payload: CodexResetCreditsPayload
-): CodexResetCreditItemPayload[] {
-  const candidates = [payload.reset_credits, payload.resetCredits, payload.credits, payload.items];
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.filter(
-        (item): item is CodexResetCreditItemPayload =>
-          Boolean(item) && typeof item === 'object' && !Array.isArray(item)
-      );
-    }
-  }
-  return [];
-}
-
-function parseCodexResetCreditExpiryMs(value: unknown): number | null {
-  if (typeof value === 'boolean' || value === undefined || value === null) return null;
-
-  if (typeof value === 'number') {
-    return normalizeCodexExpiryTimestampMs(value);
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-
-    const numeric = Number(trimmed);
-    if (Number.isFinite(numeric)) {
-      return normalizeCodexExpiryTimestampMs(numeric);
-    }
-
-    const parsed = Date.parse(trimmed);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-
-  return null;
-}
-
-function normalizeCodexExpiryTimestampMs(value: number): number | null {
-  if (!Number.isFinite(value) || value <= 0) return null;
-  const timestampMs = value > 10_000_000_000 ? value : value * 1000;
-  const date = new Date(timestampMs);
-  return Number.isNaN(date.getTime()) ? null : timestampMs;
 }
 
 export function parseXaiBillingPayload(payload: unknown): XaiBillingPayload | null {
